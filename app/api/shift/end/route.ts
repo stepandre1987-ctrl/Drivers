@@ -17,7 +17,10 @@ export async function POST(req: Request) {
   const body = Body.safeParse(json);
   if (!body.success) return new Response("Bad Request", { status: 400 });
 
-  const open = await prisma.shift.findFirst({ where: { userId, endedAt: null }, orderBy: { startedAt: "desc" } });
+  const open = await prisma.shift.findFirst({
+    where: { userId, endedAt: null },
+    orderBy: { startedAt: "desc" }
+  });
   if (!open) return new Response("No open shift", { status: 400 });
 
   const odoEnd = body.data.odoEnd ?? null;
@@ -28,7 +31,6 @@ export async function POST(req: Request) {
     data: { endedAt: new Date(), odoEnd, kms, note: body.data.note ?? open.note }
   });
 
-  await appendShiftToSheet(ended.id); // zapíše řádek do Google Sheets
-
+  await appendShiftToSheet(ended.id);
   return Response.json({ ok: true, shift: ended });
 }

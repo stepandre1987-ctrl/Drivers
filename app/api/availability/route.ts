@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -19,7 +21,7 @@ export async function POST(req: Request) {
   if (!body.success) return new Response("Bad Request", { status: 400 });
 
   const day = new Date(body.data.date);
-  day.setHours(0,0,0,0);
+  day.setHours(0, 0, 0, 0);
 
   const rec = await prisma.availability.upsert({
     where: { userId_date: { userId, date: day } },

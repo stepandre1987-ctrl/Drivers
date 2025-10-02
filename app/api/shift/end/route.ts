@@ -1,7 +1,6 @@
 export const runtime = "nodejs";
 
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/server-auth";
+import { auth } from "@/lib/server-auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { appendShiftToSheet } from "@/lib/googleSheets";
@@ -12,14 +11,12 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session?.user) return new Response("Unauthorized", { status: 401 });
   const userId = (session.user as any).id as string;
 
   let json: unknown = {};
-  try {
-    json = await req.json();
-  } catch { /* prázdné body nevadí */ }
+  try { json = await req.json(); } catch {}
 
   const parsed = Body.safeParse(json);
   if (!parsed.success) return new Response("Bad Request", { status: 400 });
@@ -46,8 +43,6 @@ export async function POST(req: Request) {
     }
   });
 
-  // zapsat řádek do Google Sheets (vytvoří záložku řidiče, pokud chybí)
   await appendShiftToSheet(ended.id);
-
   return Response.json({ ok: true, shift: ended });
 }

@@ -1,4 +1,5 @@
-import { auth } from "@/lib/auth";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -9,8 +10,8 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user?.id) return new Response("Unauthorized", { status: 401 });
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return new Response("Unauthorized", { status: 401 });
   const userId = (session.user as any).id as string;
 
   const json = await req.json().catch(() => ({}));

@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/lib/server-auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { appendShiftToSheet } from "@/lib/googleSheets";
@@ -16,9 +16,13 @@ export async function POST(req: Request) {
   if (!session?.user) return new Response("Unauthorized", { status: 401 });
   const userId = (session.user as any).id as string;
 
-  const json = await req.json().catch(() => ({}));
-  const body = Body.safeParse(json);
-  if (!body.success) return new Response("Bad Request", { status: 400 });
+  let json: unknown = {};
+  try {
+    json = await req.json();
+  } catch { /* prázdné body nevadí */ }
+
+  const parsed = Body.safeParse(json);
+  if (!parsed.success) return new Response("Bad Request", { status: 400 });
 
   const open = await prisma.shift.findFirst({
     where: { userId, endedAt: null },
@@ -26,14 +30,24 @@ export async function POST(req: Request) {
   });
   if (!open) return new Response("No open shift", { status: 400 });
 
-  const odoEnd = body.data.odoEnd ?? null;
-  const kms = open.odoStart != null && odoEnd != null ? Math.max(0, odoEnd - open.odoStart) : null;
+  const odoEnd = parsed.data.odoEnd ?? null;
+  const kms =
+    open.odoStart != null && odoEnd != null
+      ? Math.max(0, odoEnd - open.odoStart)
+      : null;
 
   const ended = await prisma.shift.update({
     where: { id: open.id },
-    data: { endedAt: new Date(), odoEnd, kms, note: body.data.note ?? open.note }
+    data: {
+      endedAt: new Date(),
+      odoEnd,
+      kms,
+      note: parsed.data.note ?? open.note
+    }
   });
 
+  // zapsat řádek do Google Sheets (vytvoří záložku řidiče, pokud chybí)
   await appendShiftToSheet(ended.id);
+
   return Response.json({ ok: true, shift: ended });
 }

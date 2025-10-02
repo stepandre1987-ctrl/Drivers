@@ -13,7 +13,6 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    // přidej user.id do session, ať ho máme v API
     session: async ({ session, user }) => {
       if (session.user) (session.user as any).id = user.id;
       return session;

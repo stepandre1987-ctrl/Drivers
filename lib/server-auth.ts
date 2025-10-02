@@ -1,37 +1,38 @@
 // lib/server-auth.ts
 import "server-only";
-import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
 /**
- * NextAuth v4 konfigurace – bez typů z "next-auth", aby se nic z něj
- * nenačetlo na top-levelu při buildu. Typování doplníme později.
+ * Vše důležité pro NextAuth načítáme AŽ za běhu.
+ * ŽÁDNÝ statický import z "next-auth" ani z "next-auth/providers/..."
  */
-export const authOptions = {
-  adapter: PrismaAdapter(prisma),
-  session: { strategy: "database" as const },
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!
-    })
-  ],
-  callbacks: {
-    // Pozn.: any -> kvůli absenci typů z next-auth
-    session: async ({ session, user }: any) => {
-      if (session.user) (session.user as any).id = user.id;
-      return session;
-    }
-  }
-} as any;
+export async function getAuthOptions() {
+  // dynamicky natáhneme next-auth Google provider
+  const GoogleModule = await import("next-auth/providers/google");
+  const GoogleProvider = GoogleModule.default;
 
-/**
- * Kompatibilní helper pro starší kód `{ auth }` – dynamický import,
- * takže se "next-auth" nenačítá při buildu.
- */
-export async function auth() {
-  const { getServerSession } = await import("next-auth");
-  return getServerSession(authOptions);
+  return {
+    adapter: PrismaAdapter(prisma),
+    session: { strategy: "database" as const },
+    providers: [
+      GoogleProvider({
+        clientId: process.env.GOOGLE_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET!
+      })
+    ],
+    callbacks: {
+      // any typování kvůli runtime importu (bez typů z next-auth)
+      session: async ({ session, user }: any) => {
+        if (session.user) (session.user as any).id = user.id;
+        return session;
+      }
+    }
+  } as any;
 }
 
+/** Kompatibilní helper `auth()` – taky dynamicky */
+export async function auth() {
+  const { getServerSession } = await import("next-auth");
+  return getServerSession(await getAuthOptions());
+}

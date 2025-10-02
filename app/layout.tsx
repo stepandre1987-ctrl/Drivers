@@ -4,7 +4,7 @@ import { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "Drivers",
-  description: "Firemní aplikace pro směny a kilometry",
+  description: "Firemní aplikace pro směny a kilometry"
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -14,4 +14,3 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     </html>
   );
 }
-

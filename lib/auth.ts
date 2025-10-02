@@ -1,19 +1,22 @@
-import NextAuth, { type NextAuthConfig } from "next-auth";
-import Google from "next-auth/providers/google";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+import type { NextAuthOptions } from "next-auth";
+import GoogleProvider from "next-auth/providers/google";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
-export const authConfig: NextAuthConfig = {
-  // v5: adapter z @auth/prisma-adapter má jiné typy; přetypujeme na any, ať build projde
-  adapter: PrismaAdapter(prisma) as any,
+export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma),
   session: { strategy: "database" },
   providers: [
-    Google({
+    GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!
     })
-  ]
+  ],
+  callbacks: {
+    // přidej user.id do session, ať ho máme v API
+    session: async ({ session, user }) => {
+      if (session.user) (session.user as any).id = user.id;
+      return session;
+    }
+  }
 };
-
-// v5 exportuje helpers z NextAuth(config)
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);

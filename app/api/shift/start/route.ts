@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -28,5 +30,6 @@ export async function POST(req: Request) {
       note: body.data.note ?? null
     }
   });
+
   return Response.json({ ok: true, shift });
 }

@@ -1,19 +1,25 @@
-# Robustní build pro Next.js + Prisma na Renderu
+# Robustní build pro Next.js + Prisma na Renderu (Alpine + OpenSSL)
 FROM node:20-alpine AS deps
 WORKDIR /app
+RUN apk add --no-cache openssl
 COPY package.json ./
-RUN npm config set fund false \
- && npm config set audit false \
- && npm config set fetch-retries 5 \
- && npm config set fetch-retry-factor 2 \
- && npm config set fetch-timeout 120000 \
- && npm install --legacy-peer-deps --no-audit --no-fund
+# když existuje lockfile, použij ci; jinak normální install
+RUN if [ -f package-lock.json ]; then npm ci --legacy-peer-deps --no-audit --no-fund; \
+    else npm install --legacy-peer-deps --no-audit --no-fund; fi
 
 FROM node:20-alpine AS builder
 WORKDIR /app
+RUN apk add --no-cache openssl
+ENV NODE_ENV=production \
+    TZ=Europe/Prague \
+    NEXT_TELEMETRY_DISABLED=1 \
+    TSC_COMPILE_ON_ERROR=true
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npx prisma generate && npm run build
+# Prisma client s logy + build s verbose výstupem
+RUN node -v && npm -v && npx prisma -v \
+ && npx prisma generate --log-level debug \
+ && npm run build --loglevel verbose
 
 FROM node:20-alpine AS runner
 WORKDIR /app

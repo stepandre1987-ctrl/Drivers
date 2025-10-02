@@ -1,11 +1,12 @@
+// lib/auth.ts
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
 
 /**
- * NextAuth v4 konfigurace
+ * NextAuth v4 konfigurace – jen typový import; nic runtime z next-auth se
+ * teď nenačítá na top-levelu, takže to nezkříží Edge/klienta při buildu.
  */
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -25,7 +26,11 @@ export const authOptions: NextAuthOptions = {
 };
 
 /**
- * Kompatibilní helper pro starší kód (v5-styl `auth()`)
- * Díky tomu bude fungovat `import { auth } from "@/lib/auth"`
+ * Kompatibilní helper pro starší importy `{ auth }` – teprve zde
+ * DYNAMICKY importujeme next-auth (getServerSession). Tím se
+ * `next-auth/index.js` nenačte během buildu do Edge/klienta.
  */
-export const auth = () => getServerSession(authOptions);
+export async function auth() {
+  const { getServerSession } = await import("next-auth");
+  return getServerSession(authOptions);
+}
